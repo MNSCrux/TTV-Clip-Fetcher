@@ -1,0 +1,30 @@
+[0516/212434.866:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/212434.866:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/212435.494:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/212502.991:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/212502.991:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/212503.599:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/212504.961:INFO:third_party\blink\renderer\modules\peerconnection\peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+[0516/212505.826:INFO:third_party\blink\renderer\modules\peerconnection\peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+[0516/214146.579:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/214146.579:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/214147.196:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/214149.140:INFO:third_party\blink\renderer\modules\peerconnection\peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+[0516/214149.804:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/214149.804:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/214151.241:INFO:third_party\blink\renderer\modules\peerconnection\peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+[0516/214204.229:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/214204.229:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/214204.860:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/214209.714:INFO:third_party\blink\renderer\modules\peerconnection\peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+[0516/214210.153:INFO:third_party\blink\renderer\modules\peerconnection\peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+[0516/214224.725:WARNING:third_party\webrtc\media\engine\webrtc_voice_engine.cc:803] Attempting to stop aecdump when no audio processing module is present
+[0516/214224.726:WARNING:third_party\webrtc\media\engine\webrtc_voice_engine.cc:803] Attempting to stop aecdump when no audio processing module is present
+[0516/215639.129:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/215639.129:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/215639.766:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/215640.914:INFO:third_party\blink\renderer\modules\peerconnection\peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+[0516/215642.401:INFO:third_party\blink\renderer\modules\peerconnection\peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+[0516/215705.310:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/215705.310:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
+[0516/215705.930:ERROR:gpu\command_buffer\service\webgpu_decoder_impl.cc:1724] Failed to query ID3D11Device from ANGLE.
