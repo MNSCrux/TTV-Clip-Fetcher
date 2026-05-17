@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "name": "poe-clip-checker",
   "version": "0.1.0",
@@ -33,3 +34,40 @@
     "tsx": "^4.22.0"
   }
 }
+=======
+{
+  "name": "poe-clip-checker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "node scripts/seed.js",
+    "test:providers": "tsx --test src/providers/provider-utils.test.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.8.0",
+    "@types/node": "^20.10.6",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.6.2",
+    "csv-parse": "^5.5.0",
+    "next": "^15.0.0",
+    "p-limit": "^7.3.0",
+    "postcss": "^8.4.32",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "prisma": "^5.8.0",
+    "tsx": "^4.22.0"
+  }
+}
+>>>>>>> 9fbecc0ee4da9e91c5089996b259da80833dc470

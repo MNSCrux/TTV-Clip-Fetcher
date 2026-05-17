@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules
 .pnp
@@ -44,3 +45,51 @@ dev.db
 
 # OS
 Thumbs.db
+=======
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Next.js
+.next
+out
+
+# Production
+build
+dist
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+dev.db
+
+# OS
+Thumbs.db
+>>>>>>> 9fbecc0ee4da9e91c5089996b259da80833dc470
