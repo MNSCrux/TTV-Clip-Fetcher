@@ -1,0 +1,162 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Streamer {
+  id                    Int     @id @default(autoincrement())
+  handle                String  @unique
+  twitch_user_id        String?  @unique
+  display_name          String
+  twitch_display_name   String?
+  profile_image_url     String?
+  game_group            String  @default("unknown")
+  active                Boolean @default(true)
+  email                 String?
+  notes                 String?
+  source_section        String?
+  original_sheet_status String?
+  restriction_status    String  @default("approved_or_unrestricted")
+  last_resolved_at      DateTime?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  clips                  Clip[]
+  fetch_errors          StreamerFetchError[]
+  list_entries          StreamerListEntry[]
+
+  @@index([active])
+  @@index([game_group])
+  @@index([restriction_status])
+  @@index([twitch_user_id])
+}
+
+model StreamerList {
+  id         Int      @id @default(autoincrement())
+  name       String
+  is_active  Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  entries    StreamerListEntry[]
+  fetch_runs FetchRun[]
+}
+
+model StreamerListEntry {
+  id               Int          @id @default(autoincrement())
+  streamer_list_id Int
+  streamer_list    StreamerList @relation(fields: [streamer_list_id], references: [id], onDelete: Cascade)
+  streamer_id      Int
+  streamer         Streamer     @relation(fields: [streamer_id], references: [id], onDelete: Cascade)
+  active           Boolean      @default(true)
+
+  @@unique([streamer_list_id, streamer_id])
+  @@index([streamer_list_id])
+}
+
+model Clip {
+  id                String  @id
+  source            String  @default("twitch_api")
+  external_id       String?
+  url               String
+  embed_url         String?
+  broadcaster_id    String
+  broadcaster_name  String
+  creator_id        String?
+  creator_name      String?
+  video_id          String?
+  game_id           String?
+  game_name         String?
+  language          String?
+  title             String
+  streamer_handle   String?
+  view_count        Int     @default(0)
+  created_at        DateTime
+  thumbnail_url     String?
+  duration          Int?
+  vod_offset        Int?
+  fetched_at        DateTime @default(now())
+  scraped_at        DateTime?
+  raw_json          String?
+  review_status     String  @default("unreviewed")
+  selected          Boolean @default(false)
+  rejected          Boolean @default(false)
+  downloaded        Boolean @default(false)
+  local_file_path   String?
+  notes             String?
+  streamer_id       Int
+  streamer          Streamer @relation(fields: [streamer_id], references: [id], onDelete: Cascade)
+  fetch_run_id      Int?
+  fetch_run         FetchRun? @relation(fields: [fetch_run_id], references: [id], onDelete: SetNull)
+  updated_at        DateTime @updatedAt
+
+  @@index([created_at])
+  @@index([view_count])
+  @@index([broadcaster_id])
+  @@index([review_status])
+  @@index([selected])
+  @@index([rejected])
+  @@index([streamer_id])
+  @@index([fetch_run_id])
+  @@unique([source, external_id, fetch_run_id])
+}
+
+model FetchRun {
+  id                    Int     @id @default(autoincrement())
+  started_at            DateTime @default(now())
+  ended_at              DateTime?
+  status                String  @default("running")
+  provider              String?
+  total_streamers       Int     @default(0)
+  completed_streamers   Int     @default(0)
+  failed_streamers      Int     @default(0)
+  total_clips_found     Int     @default(0)
+  error_summary         String?
+  created_at            DateTime @default(now())
+  finished_at           DateTime?
+  streamer_list_id      Int?
+  streamer_list         StreamerList? @relation(fields: [streamer_list_id], references: [id], onDelete: SetNull)
+
+  errors StreamerFetchError[]
+  clips  Clip[]
+
+  @@index([status])
+  @@index([created_at])
+  @@index([streamer_list_id])
+}
+
+model AppSetting {
+  key        String   @id
+  value      String
+  updated_at DateTime @updatedAt
+}
+
+model ClipList {
+  id         Int      @id @default(autoincrement())
+  name       String
+  links_text String
+  clip_count Int
+  created_at DateTime @default(now())
+}
+
+model StreamerFetchError {
+  id                Int     @id @default(autoincrement())
+  fetch_run_id      Int
+  fetch_run         FetchRun @relation(fields: [fetch_run_id], references: [id], onDelete: Cascade)
+  handle            String
+  twitch_user_id    String?
+  error_message     String
+  created_at        DateTime @default(now())
+  streamer_id       Int?
+  streamer          Streamer? @relation(fields: [streamer_id], references: [id], onDelete: SetNull)
+
+  @@index([fetch_run_id])
+  @@index([streamer_id])
+}
