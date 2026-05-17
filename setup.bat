@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 @echo off
 REM Quick start script for PoE Clip Checker
 
@@ -16,25 +15,6 @@ if not exist "node_modules" (
     echo Dependencies already installed
 )
 
-=======
-@echo off
-REM Quick start script for PoE Clip Checker
-
-echo PoE Clip Checker - Quick Start Setup
-
-REM Check Node.js
-if not exist "node_modules" (
-    echo Installing dependencies...
-    call npm install
-    if errorlevel 1 (
-        echo Failed to install dependencies
-        exit /b 1
-    )
-) else (
-    echo Dependencies already installed
-)
-
->>>>>>> 9fbecc0ee4da9e91c5089996b259da80833dc470
 REM Check if .env.local exists
 if not exist ".env.local" (
     echo Creating .env.local from template...
