@@ -11,6 +11,7 @@ interface SettingsData {
   clientSecretSet: boolean;
   settings: {
     DEFAULT_CLIP_PROVIDER: string;
+    PRIMARY_CLIP_CATEGORIES: string;
   };
   providers: Array<{
     name: string;
@@ -94,6 +95,30 @@ export default function SettingsPage() {
               </select>
             </div>
 
+          </div>
+        </div>
+
+        <div className="card mb-6">
+          <h2 className="text-2xl font-bold mb-4">Clip Category Filters</h2>
+          <div>
+            <label className="label">Standalone categories</label>
+            <textarea
+              className="input min-h-40"
+              value={settings.settings.PRIMARY_CLIP_CATEGORIES}
+              disabled={saving}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  settings: {
+                    ...settings.settings,
+                    PRIMARY_CLIP_CATEGORIES: e.target.value,
+                  },
+                })
+              }
+              onBlur={(e) =>
+                updateSettings({ PRIMARY_CLIP_CATEGORIES: e.target.value })
+              }
+            />
           </div>
         </div>
 

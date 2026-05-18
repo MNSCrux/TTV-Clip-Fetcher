@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         started_at: true,
+        created_at: true,
         total_clips_found: true,
         failed_streamers: true,
         status: true,

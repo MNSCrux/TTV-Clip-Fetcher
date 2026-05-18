@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTwitchAppAccessToken } from '@/lib/twitch';
 import { providers, getDefaultProviderName } from '@/src/providers';
+import {
+  DEFAULT_PRIMARY_CLIP_CATEGORIES,
+  PRIMARY_CLIP_CATEGORIES_SETTING_KEY,
+  serializePrimaryClipCategories,
+} from '@/lib/clip-categories';
 
 const settingKeys = [
   'DEFAULT_CLIP_PROVIDER',
+  PRIMARY_CLIP_CATEGORIES_SETTING_KEY,
 ] as const;
 
 const defaults = {
   DEFAULT_CLIP_PROVIDER: getDefaultProviderName(),
+  [PRIMARY_CLIP_CATEGORIES_SETTING_KEY]: DEFAULT_PRIMARY_CLIP_CATEGORIES.join('\n'),
 };
 
 async function readSettings() {
@@ -61,6 +68,10 @@ export async function PATCH(request: NextRequest) {
   const next = {
     DEFAULT_CLIP_PROVIDER: String(
       body.DEFAULT_CLIP_PROVIDER ?? defaults.DEFAULT_CLIP_PROVIDER
+    ),
+    [PRIMARY_CLIP_CATEGORIES_SETTING_KEY]: serializePrimaryClipCategories(
+      body[PRIMARY_CLIP_CATEGORIES_SETTING_KEY] ??
+        defaults[PRIMARY_CLIP_CATEGORIES_SETTING_KEY]
     ),
   };
   await Promise.all(

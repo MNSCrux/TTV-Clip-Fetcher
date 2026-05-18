@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import {
+  PRIMARY_CLIP_CATEGORIES_SETTING_KEY,
+  parsePrimaryClipCategories,
+} from '@/lib/clip-categories';
 
-const PRIMARY_CATEGORIES = [
-  'Path of Exile',
-  'Path of Exile 2',
-  'Last Epoch',
-  'Diablo IV',
-  'Just Chatting',
-] as const;
-const FILTER_CATEGORIES = [...PRIMARY_CATEGORIES, 'Tourist'] as const;
-
-function getCategoryBucket(gameName: string | null) {
-  return PRIMARY_CATEGORIES.includes(gameName as (typeof PRIMARY_CATEGORIES)[number])
+function getCategoryBucket(gameName: string | null, primaryCategories: string[]) {
+  return primaryCategories.includes(gameName ?? '')
     ? gameName
     : 'Tourist';
 }
@@ -28,6 +23,11 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const fetchRunId = searchParams.get('fetchRunId');
+    const storedCategorySetting = await prisma.appSetting.findUnique({
+      where: { key: PRIMARY_CLIP_CATEGORIES_SETTING_KEY },
+    });
+    const primaryCategories = parsePrimaryClipCategories(storedCategorySetting?.value);
+    const filterCategories = [...primaryCategories, 'Tourist'];
 
     const where: any = {};
 
@@ -52,9 +52,9 @@ export async function GET(request: NextRequest) {
       if (game === 'Tourist') {
         where.OR = [
           { game_name: null },
-          { game_name: { notIn: [...PRIMARY_CATEGORIES] } },
+          { game_name: { notIn: primaryCategories } },
         ];
-      } else if (PRIMARY_CATEGORIES.includes(game as (typeof PRIMARY_CATEGORIES)[number])) {
+      } else if (primaryCategories.includes(game)) {
         where.game_name = game;
       }
     }
@@ -96,13 +96,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       clips: clips.map((clip) => ({
         ...clip,
-        category_bucket: getCategoryBucket(clip.game_name),
+        category_bucket: getCategoryBucket(clip.game_name, primaryCategories),
       })),
       total,
       page,
       limit,
       pages: Math.ceil(total / limit),
-      categories: FILTER_CATEGORIES,
+      categories: filterCategories,
     });
   } catch (error) {
     console.error('Error fetching clips:', error);

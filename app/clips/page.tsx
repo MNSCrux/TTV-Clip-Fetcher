@@ -27,6 +27,7 @@ interface StreamerList {
 interface FetchRun {
   id: number;
   started_at: string;
+  created_at: string;
   total_clips_found: number;
   failed_streamers: number;
   status: string;
@@ -52,7 +53,7 @@ const formatDate = (value: string) =>
   new Date(value).toLocaleDateString('en-GB');
 
 const formatDateTime = (value: string) =>
-  new Date(value).toLocaleString('en-GB');
+  new Date(value).toLocaleString('en-GB', { hour12: true });
 
 const formatFilenameDate = (value: string) =>
   formatDate(value).replace(/\//g, '-');
@@ -277,7 +278,7 @@ export default function ClipsPage() {
   const visibleFetchRuns = showAllHistory ? fetchRuns : fetchRuns.slice(0, 5);
 
   const formatRunLabel = (run: FetchRun) => {
-    const date = formatDateTime(run.started_at);
+    const date = formatDateTime(run.created_at);
     return `${date} | ${run.total_clips_found} clips`;
   };
 
@@ -409,7 +410,7 @@ export default function ClipsPage() {
           const text = selectedClips.map((clip) => clip.url).join('\n');
           const selectedRun = fetchRuns.find((run) => run.id === selectedFetchRunId);
           const categoryName = category === 'all' ? 'All' : category;
-          const exportDate = selectedRun ? formatFilenameDate(selectedRun.started_at) : formatFilenameDate(new Date().toISOString());
+          const exportDate = selectedRun ? formatFilenameDate(selectedRun.created_at) : formatFilenameDate(new Date().toISOString());
           const exportFilename = `twitch-clip-links - ${sanitizeFilenamePart(categoryName)} - ${exportDate}.txt`;
           await fetch('/api/clip-lists', {
             method: 'POST',
