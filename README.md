@@ -74,6 +74,10 @@ TWITCH_CLIENT_SECRET=
 
 DEFAULT_CLIP_PROVIDER=twitch_api
 
+# Shared browser login for hosted site
+SITE_USERNAME=friends
+SITE_PASSWORD=
+
 # Supabase pooled runtime connection string
 DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true"
 
@@ -255,9 +259,10 @@ Opens an interactive UI at `http://localhost:5555` to browse and modify data.
    - pooled runtime URL into `DATABASE_URL`
    - direct database URL into `DIRECT_URL`
 2. Put `DATABASE_URL`, `DIRECT_URL`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `DEFAULT_CLIP_PROVIDER`, and `NEXT_PUBLIC_APP_URL` into Vercel project environment variables.
-3. Run `npm run db:migrate:deploy` once against Supabase before first production use.
-4. If moving current local data, run `npm run db:migrate:sqlite-data` once while `DATABASE_URL` points at the empty Supabase database.
-5. Set `NEXT_PUBLIC_APP_URL` to final Vercel domain so Twitch embeds use deployed host.
+3. Add `SITE_USERNAME` and `SITE_PASSWORD` in Vercel. `SITE_PASSWORD` is required in production; without it, production requests fail closed.
+4. Run `npm run db:migrate:deploy` once against Supabase before first production use.
+5. If moving current local data, run `npm run db:migrate:sqlite-data` once while `DATABASE_URL` points at the empty Supabase database.
+6. Set `NEXT_PUBLIC_APP_URL` to final Vercel domain so Twitch embeds use deployed host.
 
 `/api/twitch/fetch-clips` is configured for a 300 second Vercel function limit because full-list fetches can take longer than default short serverless jobs.
 
