@@ -46,3 +46,4 @@ tmp-import-sql/
 
 # OS
 Thumbs.db
+.vercel

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { LoadingIndicator } from '@/components/loading-indicator';
 
 interface Streamer {
   id: number;
@@ -244,12 +245,17 @@ export default function StreamersPage() {
       <h1 className="text-4xl font-bold mb-6">Streamers</h1>
       {message && <div className="card mb-4 bg-blue-900 text-blue-100">{message}</div>}
       {(isLoadingLists || isLoadingStreamers || isMutating) && (
-        <div className="mb-4 text-sm text-slate-400">
-          {isLoadingLists
-            ? 'Loading lists...'
-            : isLoadingStreamers
-              ? 'Refreshing streamers...'
-              : 'Saving changes...'}
+        <div className="mb-4">
+          <LoadingIndicator
+            compact
+            label={
+              isLoadingLists
+                ? 'Loading lists'
+                : isLoadingStreamers
+                  ? 'Refreshing streamers'
+                  : 'Saving changes'
+            }
+          />
         </div>
       )}
 
@@ -367,8 +373,8 @@ export default function StreamersPage() {
           <tbody>
             {streamers.length === 0 && isLoadingStreamers && (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-slate-400">
-                  Loading streamers...
+                <td colSpan={3} className="px-4 py-6">
+                  <LoadingIndicator label="Loading streamers" />
                 </td>
               </tr>
             )}

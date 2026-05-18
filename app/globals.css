@@ -10,8 +10,12 @@ body {
   @apply font-sans;
 }
 
+main {
+  animation: page-enter 180ms ease-out;
+}
+
 button {
-  @apply transition-colors duration-200;
+  @apply transition duration-200;
 }
 
 .btn {
@@ -35,7 +39,7 @@ button {
 }
 
 .card {
-  @apply bg-slate-800 border border-slate-700 rounded-lg p-4;
+  @apply bg-slate-800 border border-slate-700 rounded-lg p-4 transition duration-200;
 }
 
 .input {
@@ -75,7 +79,27 @@ button {
 }
 
 .loading-spinner {
-  @apply inline-block animate-spin;
+  @apply inline-block h-5 w-5 rounded-full border-2 border-slate-600 border-t-yellow-400 animate-spin;
+}
+
+.loading-state {
+  @apply flex items-center gap-3 text-sm text-slate-400;
+}
+
+.loading-state-compact {
+  @apply gap-2;
+}
+
+.loading-state-compact .loading-spinner {
+  @apply h-4 w-4;
+}
+
+.skeleton {
+  @apply animate-pulse rounded bg-slate-700/80;
+}
+
+.fade-in {
+  animation: fade-in 180ms ease-out;
 }
 
 .relative-time {
@@ -87,4 +111,35 @@ button {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

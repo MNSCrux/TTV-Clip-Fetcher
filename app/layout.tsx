@@ -21,9 +21,6 @@ export default function RootLayout({
               PoE Clip Checker
             </div>
             <div className="flex space-x-6">
-              <Link href="/" className="hover:text-yellow-400 transition">
-                Dashboard
-              </Link>
               <Link href="/streamers" className="hover:text-yellow-400 transition">
                 Streamers
               </Link>

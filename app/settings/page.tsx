@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { LoadingIndicator } from '@/components/loading-indicator';
 
 interface SettingsData {
   configured: boolean;
@@ -41,8 +42,8 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="py-8 text-slate-400">
-        Loading settings...
+      <div className="py-8">
+        <LoadingIndicator label="Loading settings" />
       </div>
     );
   }

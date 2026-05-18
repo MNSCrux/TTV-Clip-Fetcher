@@ -89,9 +89,6 @@ export async function GET(request: NextRequest) {
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-        include: {
-          streamer: true,
-        },
       }),
       prisma.clip.count({ where }),
     ]);

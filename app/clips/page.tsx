@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { LoadingIndicator } from '@/components/loading-indicator';
 
 interface Clip {
   id: string;
@@ -42,6 +43,10 @@ interface FetchRunDetails extends FetchRun {
 }
 
 const SELECTED_LIST_STORAGE_KEY = 'selectedStreamerListId';
+const STREAMER_LISTS_CACHE_KEY = 'streamerLists';
+const FETCH_RUNS_CACHE_PREFIX = 'fetchRuns:list:';
+const FETCH_RUN_DETAILS_CACHE_PREFIX = 'fetchRun:';
+const CLIPS_CACHE_PREFIX = 'clips:';
 
 export default function ClipsPage() {
   const [clips, setClips] = useState<Clip[]>([]);
@@ -66,10 +71,15 @@ export default function ClipsPage() {
   const [showAllHistory, setShowAllHistory] = useState(false);
 
   const loadLists = useCallback(async () => {
+    const cached = window.sessionStorage.getItem(STREAMER_LISTS_CACHE_KEY);
+    if (cached) {
+      setStreamerLists(JSON.parse(cached) as StreamerList[]);
+    }
     const res = await fetch('/api/streamer-lists');
     const data = await res.json();
     const lists = Array.isArray(data) ? data : [];
     setStreamerLists(lists);
+    window.sessionStorage.setItem(STREAMER_LISTS_CACHE_KEY, JSON.stringify(lists));
     setSelectedListId((current) => {
       if (current && lists.some((list: StreamerList) => list.id === current)) {
         return current;
@@ -84,16 +94,31 @@ export default function ClipsPage() {
   }, []);
 
   const loadFetchRunDetails = useCallback(async (fetchRunId: number) => {
+    const cacheKey = `${FETCH_RUN_DETAILS_CACHE_PREFIX}${fetchRunId}`;
+    const cached = window.sessionStorage.getItem(cacheKey);
+    if (cached) {
+      setSelectedFetchRunDetails(JSON.parse(cached) as FetchRunDetails);
+    }
     const res = await fetch(`/api/fetch-runs/${fetchRunId}`);
     const data = await res.json();
-    setSelectedFetchRunDetails(res.ok ? data : null);
+    const details = res.ok ? data : null;
+    setSelectedFetchRunDetails(details);
+    if (details) {
+      window.sessionStorage.setItem(cacheKey, JSON.stringify(details));
+    }
   }, []);
 
   const loadFetchRuns = useCallback(async (listId: number) => {
+    const cacheKey = `${FETCH_RUNS_CACHE_PREFIX}${listId}`;
+    const cached = window.sessionStorage.getItem(cacheKey);
+    if (cached) {
+      setFetchRuns(JSON.parse(cached) as FetchRun[]);
+    }
     const res = await fetch(`/api/fetch-runs?listId=${listId}`);
     const data = await res.json();
     const runs = Array.isArray(data) ? data : [];
     setFetchRuns(runs);
+    window.sessionStorage.setItem(cacheKey, JSON.stringify(runs));
     setSelectedFetchRunId((current) => {
       if (current && runs.some((run: FetchRun) => run.id === current)) {
         return current;
@@ -117,10 +142,18 @@ export default function ClipsPage() {
         fetchRunId: String(selectedFetchRunId),
       });
       if (minViews) params.set('minViews', minViews);
+      const cacheKey = `${CLIPS_CACHE_PREFIX}${params.toString()}`;
+      const cached = window.sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        setClips(Array.isArray(cachedData.clips) ? cachedData.clips : []);
+        setAvailableCategories(Array.isArray(cachedData.categories) ? cachedData.categories : []);
+      }
       const res = await fetch(`/api/clips?${params}`);
       const data = await res.json();
       setClips(Array.isArray(data.clips) ? data.clips : []);
       setAvailableCategories(Array.isArray(data.categories) ? data.categories : []);
+      window.sessionStorage.setItem(cacheKey, JSON.stringify(data));
     } finally {
       setLoading(false);
     }
@@ -195,6 +228,7 @@ export default function ClipsPage() {
         }
       }
       await loadFetchRuns(selectedListId);
+      window.sessionStorage.removeItem(`${FETCH_RUNS_CACHE_PREFIX}${selectedListId}`);
       if (newRunId) {
         setSelectedFetchRunId(newRunId);
       }
@@ -243,6 +277,8 @@ export default function ClipsPage() {
     });
     if (!res.ok || !selectedListId) return;
     setSelectedFetchRunDetails(null);
+    window.sessionStorage.removeItem(`${FETCH_RUN_DETAILS_CACHE_PREFIX}${selectedFetchRunId}`);
+    window.sessionStorage.removeItem(`${FETCH_RUNS_CACHE_PREFIX}${selectedListId}`);
     await loadFetchRuns(selectedListId);
   };
 
@@ -378,6 +414,11 @@ export default function ClipsPage() {
         }} disabled={!selectedClips.length} className="btn btn-secondary">Export Selected Links</button>
       </div>
 
+      {loading && clips.length > 0 && (
+        <div className="mb-4">
+          <LoadingIndicator compact label="Refreshing clips" />
+        </div>
+      )}
       {progress && (
         <div className="card mb-4 text-sm flex flex-wrap gap-x-5 gap-y-2">
           <span>Processed <strong>{progress.processed ?? 0}</strong> / {progress.totalStreamers}</span>
@@ -439,10 +480,23 @@ export default function ClipsPage() {
         </div>
       )}
 
-      {loading ? <div className="py-8 text-slate-400">Loading clips...</div> : !selectedFetchRunId ? (
+      {loading && clips.length === 0 ? (
+        <div className="space-y-3 py-4">
+          <LoadingIndicator label="Loading clips" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="card space-y-3">
+                <div className="skeleton aspect-video w-full" />
+                <div className="skeleton h-4 w-5/6" />
+                <div className="skeleton h-4 w-2/3" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : !selectedFetchRunId ? (
         <div className="py-8 text-slate-400">No fetch runs for this list yet. Fetch clips to create one.</div>
       ) : (
-        <div className="space-y-8 mt-2">
+        <div className="space-y-8 mt-2 fade-in">
           {grouped.map(([handle, entries]) => (
             <section key={handle}>
               <h2 className="text-base font-semibold mb-2">{handle}'s clips</h2>
