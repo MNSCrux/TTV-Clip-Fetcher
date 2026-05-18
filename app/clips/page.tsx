@@ -48,6 +48,18 @@ const FETCH_RUNS_CACHE_PREFIX = 'fetchRuns:list:';
 const FETCH_RUN_DETAILS_CACHE_PREFIX = 'fetchRun:';
 const CLIPS_CACHE_PREFIX = 'clips:';
 
+const formatDate = (value: string) =>
+  new Date(value).toLocaleDateString('en-GB');
+
+const formatDateTime = (value: string) =>
+  new Date(value).toLocaleString('en-GB');
+
+const formatFilenameDate = (value: string) =>
+  formatDate(value).replace(/\//g, '-');
+
+const sanitizeFilenamePart = (value: string) =>
+  value.replace(/[<>:"/\\|?*]/g, '-').trim();
+
 export default function ClipsPage() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [loading, setLoading] = useState(false);
@@ -265,7 +277,7 @@ export default function ClipsPage() {
   const visibleFetchRuns = showAllHistory ? fetchRuns : fetchRuns.slice(0, 5);
 
   const formatRunLabel = (run: FetchRun) => {
-    const date = new Date(run.started_at).toLocaleString();
+    const date = formatDateTime(run.started_at);
     return `${date} | ${run.total_clips_found} clips`;
   };
 
@@ -395,6 +407,10 @@ export default function ClipsPage() {
         <button onClick={() => setSelectedIds(new Set())} className="btn btn-secondary">Clear All</button>
         <button onClick={async () => {
           const text = selectedClips.map((clip) => clip.url).join('\n');
+          const selectedRun = fetchRuns.find((run) => run.id === selectedFetchRunId);
+          const categoryName = category === 'all' ? 'All' : category;
+          const exportDate = selectedRun ? formatFilenameDate(selectedRun.started_at) : formatFilenameDate(new Date().toISOString());
+          const exportFilename = `twitch-clip-links - ${sanitizeFilenamePart(categoryName)} - ${exportDate}.txt`;
           await fetch('/api/clip-lists', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -408,7 +424,7 @@ export default function ClipsPage() {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'twitch-clip-links.txt';
+          a.download = exportFilename;
           a.click();
           URL.revokeObjectURL(url);
         }} disabled={!selectedClips.length} className="btn btn-secondary">Export Selected Links</button>
@@ -551,7 +567,7 @@ export default function ClipsPage() {
                       <span className="badge badge-unreviewed">{clip.duration ? `${clip.duration}s` : '-'}</span>
                     </div>
                     <div className="text-[11px] text-slate-500 mb-2">
-                      {new Date(clip.created_at).toLocaleDateString()}
+                      {formatDate(clip.created_at)}
                     </div>
                     <div className="mt-auto flex justify-end">
                       <a
