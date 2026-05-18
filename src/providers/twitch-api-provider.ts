@@ -10,9 +10,9 @@ import type {
 export const twitchApiProvider: ClipSourceProvider = {
   name: 'twitch_api',
   displayName: 'Twitch API',
-  enabled: !!(
-    process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET
-  ),
+  get enabled() {
+    return !!(process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET);
+  },
   async fetchClipsForStreamer(input: FetchClipsInput): Promise<NormalizedClip[]> {
     if (!input.streamerId) {
       throw new Error('Twitch API provider requires streamerId');
