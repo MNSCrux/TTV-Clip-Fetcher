@@ -225,6 +225,8 @@ export default function ClipsPage() {
   }, [clips]);
   const selectedClips = clips.filter((clip) => selectedIds.has(clip.id));
   const previewClip = clips.find((clip) => clip.id === previewId);
+  const twitchEmbedParent =
+    typeof window === 'undefined' ? 'localhost' : window.location.hostname;
   const activeList = streamerLists.find((list) => list.is_active);
   const visibleFetchRuns = showAllHistory ? fetchRuns : fetchRuns.slice(0, 5);
 
@@ -428,7 +430,7 @@ export default function ClipsPage() {
             </div>
             <div className="aspect-video bg-black">
               <iframe
-                src={`https://clips.twitch.tv/embed?clip=${previewClip.external_id}&parent=localhost&autoplay=false`}
+                src={`https://clips.twitch.tv/embed?clip=${previewClip.external_id}&parent=${encodeURIComponent(twitchEmbedParent)}&autoplay=false`}
                 allowFullScreen
                 className="h-full w-full"
               />
