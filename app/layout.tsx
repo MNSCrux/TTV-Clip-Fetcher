@@ -1,5 +1,6 @@
 import './globals.css';
 import { ReactNode } from 'react';
+import Link from 'next/link';
 
 export const metadata = {
   title: 'PoE Clip Checker',
@@ -20,18 +21,18 @@ export default function RootLayout({
               PoE Clip Checker
             </div>
             <div className="flex space-x-6">
-              <a href="/" className="hover:text-yellow-400 transition">
+              <Link href="/" className="hover:text-yellow-400 transition">
                 Dashboard
-              </a>
-              <a href="/streamers" className="hover:text-yellow-400 transition">
+              </Link>
+              <Link href="/streamers" className="hover:text-yellow-400 transition">
                 Streamers
-              </a>
-              <a href="/clips" className="hover:text-yellow-400 transition">
+              </Link>
+              <Link href="/clips" className="hover:text-yellow-400 transition">
                 Clips
-              </a>
-              <a href="/settings" className="hover:text-yellow-400 transition">
+              </Link>
+              <Link href="/settings" className="hover:text-yellow-400 transition">
                 Settings
-              </a>
+              </Link>
             </div>
           </div>
         </nav>

@@ -41,6 +41,8 @@ yarn-error.log*
 *.db-shm
 *.db-wal
 dev.db
+sqlite-export.json
+tmp-import-sql/
 
 # OS
 Thumbs.db

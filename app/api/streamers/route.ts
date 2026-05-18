@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { parse } from 'csv-parse/sync';
 import {
   parseOptionalListId,
   resolveStreamerListId,
 } from '@/lib/streamer-lists';
 
-const prisma = new PrismaClient();
 
 async function ensureListEntry(
   listId: number,
@@ -158,44 +157,61 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid CSV', errors }, { status: 400 });
     }
 
-    await prisma.$transaction(async (tx) => {
-      const streamerIds: number[] = [];
-      for (const row of normalized) {
-        const streamer = await tx.streamer.upsert({
+    const handles = normalized.map((row) => row.handle);
+
+    // Avoid long interactive transactions: serverless poolers can drop session state mid-import.
+    await prisma.streamer.createMany({
+      data: normalized,
+      skipDuplicates: true,
+    });
+
+    await prisma.$transaction(
+      normalized.map((row) =>
+        prisma.streamer.update({
           where: { handle: row.handle },
-          create: row,
-          update: {
-            display_name: row.display_name,
-          },
-        });
-        streamerIds.push(streamer.id);
-        await tx.streamerListEntry.upsert({
+          data: { display_name: row.display_name },
+        })
+      )
+    );
+
+    const streamers = await prisma.streamer.findMany({
+      where: { handle: { in: handles } },
+      select: { id: true, handle: true },
+    });
+    const streamerIdsByHandle = new Map(
+      streamers.map((streamer) => [streamer.handle, streamer.id])
+    );
+    const streamerIds = streamers.map((streamer) => streamer.id);
+
+    await prisma.$transaction(
+      normalized.map((row) =>
+        prisma.streamerListEntry.upsert({
           where: {
             streamer_list_id_streamer_id: {
               streamer_list_id: listId,
-              streamer_id: streamer.id,
+              streamer_id: streamerIdsByHandle.get(row.handle)!,
             },
           },
           create: {
             streamer_list_id: listId,
-            streamer_id: streamer.id,
+            streamer_id: streamerIdsByHandle.get(row.handle)!,
             active: row.active,
           },
           update: {
             active: row.active,
           },
-        });
-      }
+        })
+      )
+    );
 
-      if (mode === 'replace') {
-        await tx.streamerListEntry.deleteMany({
-          where: {
-            streamer_list_id: listId,
-            streamer_id: { notIn: streamerIds },
-          },
-        });
-      }
-    });
+    if (mode === 'replace') {
+      await prisma.streamerListEntry.deleteMany({
+        where: {
+          streamer_list_id: listId,
+          streamer_id: { notIn: streamerIds },
+        },
+      });
+    }
 
     return NextResponse.json({
       imported: normalized.length,

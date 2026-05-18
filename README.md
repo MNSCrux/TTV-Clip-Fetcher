@@ -43,7 +43,7 @@ A fast, local clip review dashboard for Twitch streamers. Import streamer handle
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **Backend**: Next.js API routes
-- **Database**: SQLite with Prisma ORM
+- **Database**: Supabase Postgres with Prisma ORM
 - **API**: Twitch Helix API
 - **Auth**: Twitch app access token
 
@@ -74,8 +74,11 @@ TWITCH_CLIENT_SECRET=
 
 DEFAULT_CLIP_PROVIDER=twitch_api
 
-# Database path
-DATABASE_URL="file:./dev.db"
+# Supabase pooled runtime connection string
+DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# Supabase direct connection string for Prisma migrations
+DIRECT_URL="postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres"
 
 # App URL for Twitch embed (local testing)
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
@@ -86,11 +89,10 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ### 3. Initialize Database
 
 ```bash
-npm run db:push
+npm run db:migrate:deploy
 ```
 
-This creates the SQLite database and applies the Prisma schema. Prisma CLI reads
-`DATABASE_URL` from `.env`; app runtime reads `.env.local`.
+This applies the Postgres migrations to Supabase. Prisma CLI reads `.env`; app runtime reads `.env.local`.
 
 ### 4. Build and Start
 
@@ -247,12 +249,17 @@ npm run db:studio
 
 Opens an interactive UI at `http://localhost:5555` to browse and modify data.
 
-### Reset Database
+### Supabase + Vercel Deployment
 
-```bash
-rm dev.db
-npm run db:push
-```
+1. Create Supabase project and copy two Prisma-compatible URLs:
+   - pooled runtime URL into `DATABASE_URL`
+   - direct database URL into `DIRECT_URL`
+2. Put `DATABASE_URL`, `DIRECT_URL`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `DEFAULT_CLIP_PROVIDER`, and `NEXT_PUBLIC_APP_URL` into Vercel project environment variables.
+3. Run `npm run db:migrate:deploy` once against Supabase before first production use.
+4. If moving current local data, run `npm run db:migrate:sqlite-data` once while `DATABASE_URL` points at the empty Supabase database.
+5. Set `NEXT_PUBLIC_APP_URL` to final Vercel domain so Twitch embeds use deployed host.
+
+`/api/twitch/fetch-clips` is configured for a 300 second Vercel function limit because full-list fetches can take longer than default short serverless jobs.
 
 ### Check Node Logs
 
@@ -298,9 +305,6 @@ This workflow is designed for fast clip review: fetch → sort → navigate → 
 - Check that the date range includes the clips (default: last 24 hours)
 - Some streamers may not have any clips in the time window
 
-### Database is locked
-- Close any other processes accessing the database
-- The `dev.db-shm` and `dev.db-wal` files are temporary; they can be safely deleted if the process crashes
 
 ## Future Enhancements
 

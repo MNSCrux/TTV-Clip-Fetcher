@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import {
   getDefaultProviderName,
   getProvider,
@@ -8,7 +8,7 @@ import type { ClipProviderName, NormalizedClip } from '@/src/providers';
 import { resolveStreamerListId } from '@/lib/streamer-lists';
 import { resolveMissingTwitchUserIds } from '@/lib/twitch-user-resolution';
 
-const prisma = new PrismaClient();
+export const maxDuration = 300;
 
 type FetchClipsRequest = {
   startedAt?: string;

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { getTwitchAppAccessToken } from '@/lib/twitch';
 import { providers, getDefaultProviderName } from '@/src/providers';
-
-const prisma = new PrismaClient();
 
 const settingKeys = [
   'DEFAULT_CLIP_PROVIDER',

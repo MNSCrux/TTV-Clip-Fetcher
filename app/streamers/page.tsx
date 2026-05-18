@@ -15,6 +15,8 @@ interface StreamerList {
 }
 
 const SELECTED_LIST_STORAGE_KEY = 'selectedStreamerListId';
+const STREAMER_LISTS_CACHE_KEY = 'streamerLists';
+const STREAMERS_CACHE_PREFIX = 'streamers:list:';
 
 export default function StreamersPage() {
   const [streamerLists, setStreamerLists] = useState<StreamerList[]>([]);
@@ -24,23 +26,38 @@ export default function StreamersPage() {
   const [draft, setDraft] = useState('');
   const [mode, setMode] = useState<'append' | 'replace'>('append');
   const [message, setMessage] = useState('');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isLoadingLists, setIsLoadingLists] = useState(true);
+  const [isLoadingStreamers, setIsLoadingStreamers] = useState(false);
+  const [isMutating, setIsMutating] = useState(false);
+
+  const cacheStreamers = useCallback((listId: number, rows: Streamer[]) => {
+    window.sessionStorage.setItem(`${STREAMERS_CACHE_PREFIX}${listId}`, JSON.stringify(rows));
+  }, []);
 
   const loadLists = useCallback(async () => {
-    const res = await fetch('/api/streamer-lists');
-    const data = await res.json();
-    const lists = Array.isArray(data) ? data : [];
-    setStreamerLists(lists);
-    setSelectedListId((current) => {
-      if (current && lists.some((list: StreamerList) => list.id === current)) {
-        return current;
-      }
-      const stored = Number(window.localStorage.getItem(SELECTED_LIST_STORAGE_KEY));
-      if (stored && lists.some((list: StreamerList) => list.id === stored)) {
-        return stored;
-      }
-      const active = lists.find((list: StreamerList) => list.is_active);
-      return active?.id ?? lists[0]?.id ?? null;
-    });
+    setIsLoadingLists(true);
+    try {
+      const res = await fetch('/api/streamer-lists');
+      const data = await res.json();
+      const lists = Array.isArray(data) ? data : [];
+      setStreamerLists(lists);
+      window.sessionStorage.setItem(STREAMER_LISTS_CACHE_KEY, JSON.stringify(lists));
+      setSelectedListId((current) => {
+        if (current && lists.some((list: StreamerList) => list.id === current)) {
+          return current;
+        }
+        const stored = Number(window.localStorage.getItem(SELECTED_LIST_STORAGE_KEY));
+        if (stored && lists.some((list: StreamerList) => list.id === stored)) {
+          return stored;
+        }
+        const active = lists.find((list: StreamerList) => list.is_active);
+        return active?.id ?? lists[0]?.id ?? null;
+      });
+    } finally {
+      setIsLoadingLists(false);
+    }
   }, []);
 
   const load = useCallback(async () => {
@@ -48,16 +65,42 @@ export default function StreamersPage() {
       setStreamers([]);
       return;
     }
-    const res = await fetch(`/api/streamers?listId=${selectedListId}`);
-    const data = await res.json();
-    setStreamers(Array.isArray(data) ? data : []);
-  }, [selectedListId]);
+    setIsLoadingStreamers(true);
+    try {
+      const res = await fetch(`/api/streamers?listId=${selectedListId}`);
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : [];
+      setStreamers(rows);
+      cacheStreamers(selectedListId, rows);
+    } finally {
+      setIsLoadingStreamers(false);
+    }
+  }, [cacheStreamers, selectedListId]);
 
   useEffect(() => {
+    const cachedLists = window.sessionStorage.getItem(STREAMER_LISTS_CACHE_KEY);
+    if (cachedLists) {
+      const lists = JSON.parse(cachedLists) as StreamerList[];
+      setStreamerLists(lists);
+      const stored = Number(window.localStorage.getItem(SELECTED_LIST_STORAGE_KEY));
+      const active = lists.find((list) => list.is_active);
+      setSelectedListId(
+        stored && lists.some((list) => list.id === stored)
+          ? stored
+          : active?.id ?? lists[0]?.id ?? null
+      );
+      setIsLoadingLists(false);
+    }
     loadLists();
   }, [loadLists]);
 
   useEffect(() => {
+    if (selectedListId) {
+      const cachedRows = window.sessionStorage.getItem(`${STREAMERS_CACHE_PREFIX}${selectedListId}`);
+      if (cachedRows) {
+        setStreamers(JSON.parse(cachedRows) as Streamer[]);
+      }
+    }
     load();
   }, [load]);
 
@@ -69,35 +112,44 @@ export default function StreamersPage() {
 
   const addStreamer = async () => {
     if (!selectedListId) return;
-    const res = await fetch('/api/streamers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ handle: draft, listId: selectedListId }),
-    });
-    const data = await res.json();
-    if (!res.ok) return setMessage(data.error || 'Failed to add streamer');
-    setDraft('');
-    setMessage(`Saved ${data.handle}`);
-    load();
+    setIsMutating(true);
+    try {
+      const res = await fetch('/api/streamers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handle: draft, listId: selectedListId }),
+      });
+      const data = await res.json();
+      if (!res.ok) return setMessage(data.error || 'Failed to add streamer');
+      setDraft('');
+      setMessage(`Saved ${data.handle}`);
+      load();
+    } finally {
+      setIsMutating(false);
+    }
   };
 
-  const importCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!selectedListId) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const importCsv = async () => {
+    if (!selectedListId || !csvFile || isImporting) return;
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', csvFile);
     form.append('mode', mode);
     form.append('listId', String(selectedListId));
-    const res = await fetch('/api/streamers', { method: 'POST', body: form });
-    const data = await res.json();
-    if (!res.ok) {
-      setMessage(data.errors?.join('; ') || data.error || 'Import failed');
-    } else {
-      setMessage(`${mode === 'replace' ? 'Replaced with' : 'Imported'} ${data.imported} handles`);
-      load();
+    setIsImporting(true);
+    setMessage(`Importing ${csvFile.name}...`);
+    try {
+      const res = await fetch('/api/streamers', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(data.errors?.join('; ') || data.error || 'Import failed');
+      } else {
+        setMessage(`${mode === 'replace' ? 'Replaced with' : 'Imported'} ${data.imported} handles`);
+        setCsvFile(null);
+        load();
+      }
+    } finally {
+      setIsImporting(false);
     }
-    e.target.value = '';
   };
 
   const toggleActive = async (streamer: Streamer) => {
@@ -107,23 +159,30 @@ export default function StreamersPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !streamer.active, listId: selectedListId }),
     });
-    setStreamers((current) =>
-      current.map((item) =>
+    setStreamers((current) => {
+      const next = current.map((item) =>
         item.id === streamer.id ? { ...item, active: !item.active } : item
-      )
-    );
+      );
+      cacheStreamers(selectedListId, next);
+      return next;
+    });
   };
 
   const deleteSelected = async () => {
     if (!selectedListId || !selectedIds.size) return;
     if (!window.confirm(`Delete ${selectedIds.size} streamer(s) from this list?`)) return;
-    await Promise.all(
-      [...selectedIds].map((id) =>
-        fetch(`/api/streamers/${id}?listId=${selectedListId}`, { method: 'DELETE' })
-      )
-    );
-    setSelectedIds(new Set());
-    load();
+    setIsMutating(true);
+    try {
+      await Promise.all(
+        [...selectedIds].map((id) =>
+          fetch(`/api/streamers/${id}?listId=${selectedListId}`, { method: 'DELETE' })
+        )
+      );
+      setSelectedIds(new Set());
+      load();
+    } finally {
+      setIsMutating(false);
+    }
   };
 
   const createList = async () => {
@@ -184,6 +243,15 @@ export default function StreamersPage() {
     <div>
       <h1 className="text-4xl font-bold mb-6">Streamers</h1>
       {message && <div className="card mb-4 bg-blue-900 text-blue-100">{message}</div>}
+      {(isLoadingLists || isLoadingStreamers || isMutating) && (
+        <div className="mb-4 text-sm text-slate-400">
+          {isLoadingLists
+            ? 'Loading lists...'
+            : isLoadingStreamers
+              ? 'Refreshing streamers...'
+              : 'Saving changes...'}
+        </div>
+      )}
 
       <div className="card mb-6 flex flex-wrap gap-3 items-end">
         <div className="min-w-48">
@@ -192,6 +260,7 @@ export default function StreamersPage() {
             className="input min-w-48"
             value={selectedListId ?? ''}
             onChange={(e) => setSelectedListId(Number(e.target.value))}
+            disabled={isLoadingLists || isMutating}
           >
             {streamerLists.map((list) => (
               <option key={list.id} value={list.id}>
@@ -233,7 +302,7 @@ export default function StreamersPage() {
           <label className="label">Handle</label>
           <input className="input" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="zizaran" />
         </div>
-        <button className="btn btn-primary" onClick={addStreamer} disabled={!selectedListId}>
+        <button className="btn btn-primary" onClick={addStreamer} disabled={!selectedListId || isMutating}>
           Add Streamer
         </button>
       </div>
@@ -241,19 +310,42 @@ export default function StreamersPage() {
       <div className="mb-6 flex flex-wrap gap-3 items-end">
         <div>
           <label className="label">CSV Import Mode</label>
-          <select className="input min-w-40" value={mode} onChange={(e) => setMode(e.target.value as 'append' | 'replace')}>
+          <select
+            className="input min-w-40"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as 'append' | 'replace')}
+            disabled={isImporting}
+          >
             <option value="append">Add / merge</option>
             <option value="replace">Replace list</option>
           </select>
         </div>
         <div className="max-w-md">
           <label className="label">Import CSV</label>
-          <input type="file" accept=".csv" onChange={importCsv} className="input" disabled={!selectedListId} />
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
+            className="input"
+            disabled={!selectedListId || isImporting}
+          />
         </div>
-        <button className="btn btn-danger" onClick={deleteSelected} disabled={!selectedIds.size}>
+        <button
+          className="btn btn-primary"
+          onClick={importCsv}
+          disabled={!selectedListId || !csvFile || isImporting}
+        >
+          {isImporting ? 'Importing...' : 'Import CSV'}
+        </button>
+        <button className="btn btn-danger" onClick={deleteSelected} disabled={!selectedIds.size || isMutating}>
           Delete Selected
         </button>
       </div>
+      {csvFile && !isImporting && (
+        <div className="mb-4 text-sm text-slate-400">
+          Ready: {csvFile.name}
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -273,6 +365,13 @@ export default function StreamersPage() {
             </tr>
           </thead>
           <tbody>
+            {streamers.length === 0 && isLoadingStreamers && (
+              <tr>
+                <td colSpan={3} className="px-4 py-6 text-slate-400">
+                  Loading streamers...
+                </td>
+              </tr>
+            )}
             {streamers.map((streamer) => (
               <tr key={streamer.id} className="border-b border-slate-700">
                 <td className="px-4 py-2">
