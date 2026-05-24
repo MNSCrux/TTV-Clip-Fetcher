@@ -18,10 +18,8 @@ model Streamer {
   display_name          String
   twitch_display_name   String?
   profile_image_url     String?
-  game_group            String  @default("unknown")
   active                Boolean @default(true)
   email                 String?
-  notes                 String?
   source_section        String?
   original_sheet_status String?
   restriction_status    String  @default("approved_or_unrestricted")
@@ -34,7 +32,6 @@ model Streamer {
   list_entries          StreamerListEntry[]
 
   @@index([active])
-  @@index([game_group])
   @@index([restriction_status])
   @@index([twitch_user_id])
 }

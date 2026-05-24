@@ -15,6 +15,7 @@ export type NormalizedClip = {
   url: string;
   title?: string;
   streamerHandle: string;
+  broadcasterId?: string;
   broadcasterName?: string;
   thumbnailUrl?: string;
   viewCount?: number | null;

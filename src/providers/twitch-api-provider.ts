@@ -7,6 +7,48 @@ import type {
   NormalizedClip,
 } from './provider-types';
 
+async function fetchGameNames(gameIds: string[], token: string, clientId: string) {
+  const names = new Map<string, string>();
+  const uniqueIds = [...new Set(gameIds.filter(Boolean))];
+  for (let i = 0; i < uniqueIds.length; i += 100) {
+    const params = new URLSearchParams();
+    for (const id of uniqueIds.slice(i, i + 100)) params.append('id', id);
+    const response = await fetch(`https://api.twitch.tv/helix/games?${params}`, {
+      headers: {
+        'Client-ID': clientId,
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    });
+    if (response.ok) {
+      const data = await response.json();
+      for (const game of data.data ?? []) {
+        names.set(game.id, game.name);
+      }
+    }
+  }
+  return names;
+}
+
+function normalizeClips(rawClips: TwitchClip[], gameNames: Map<string, string>) {
+  return rawClips.map((clip) => ({
+    source: 'twitch_api' as const,
+    externalId: clip.id,
+    url: clip.url,
+    title: clip.title,
+    streamerHandle: normalizeHandle(clip.broadcaster_name),
+    broadcasterId: clip.broadcaster_id,
+    broadcasterName: clip.broadcaster_name,
+    thumbnailUrl: clip.thumbnail_url,
+    viewCount: clip.view_count,
+    durationSeconds: clip.duration,
+    categoryName: gameNames.get(clip.game_id) ?? null,
+    createdAt: new Date(clip.created_at),
+    scrapedAt: new Date(),
+    raw: clip,
+  }));
+}
+
 export const twitchApiProvider: ClipSourceProvider = {
   name: 'twitch_api',
   displayName: 'Twitch API',
@@ -48,40 +90,15 @@ export const twitchApiProvider: ClipSourceProvider = {
       cursor = data.pagination?.cursor;
     } while (cursor);
 
-    const gameIds = [...new Set(rawClips.map((clip) => clip.game_id).filter(Boolean))];
-    const gameNames = new Map<string, string>();
-    for (let i = 0; i < gameIds.length; i += 100) {
-      const params = new URLSearchParams();
-      for (const id of gameIds.slice(i, i + 100)) params.append('id', id);
-      const response = await fetch(`https://api.twitch.tv/helix/games?${params}`, {
-        headers: {
-          'Client-ID': clientId,
-          Authorization: `Bearer ${token}`,
-        },
-        cache: 'no-store',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        for (const game of data.data ?? []) {
-          gameNames.set(game.id, game.name);
-        }
-      }
-    }
+    const gameNames = await fetchGameNames(
+      rawClips.map((clip) => clip.game_id),
+      token,
+      clientId
+    );
 
-    return rawClips.map((clip) => ({
-          source: 'twitch_api' as const,
-          externalId: clip.id,
-          url: clip.url,
-          title: clip.title,
-          streamerHandle: normalizeHandle(input.handle),
-          broadcasterName: clip.broadcaster_name,
-          thumbnailUrl: clip.thumbnail_url,
-          viewCount: clip.view_count,
-          durationSeconds: clip.duration,
-          categoryName: gameNames.get(clip.game_id) ?? null,
-          createdAt: new Date(clip.created_at),
-          scrapedAt: new Date(),
-          raw: clip,
-        }));
+    return normalizeClips(rawClips, gameNames).map((clip) => ({
+      ...clip,
+      streamerHandle: normalizeHandle(input.handle),
+    }));
   },
 };

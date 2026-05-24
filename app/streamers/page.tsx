@@ -7,6 +7,8 @@ interface Streamer {
   id: number;
   handle: string;
   active: boolean;
+  display_name?: string;
+  twitch_user_id?: string | null;
 }
 
 interface StreamerList {
@@ -18,6 +20,12 @@ interface StreamerList {
 const SELECTED_LIST_STORAGE_KEY = 'selectedStreamerListId';
 const STREAMER_LISTS_CACHE_KEY = 'streamerLists';
 const STREAMERS_CACHE_PREFIX = 'streamers:list:';
+
+const sanitizeFilenamePart = (value: string) =>
+  value.replace(/[<>:"/\\|?*]/g, '-').trim();
+
+const escapeCsvValue = (value: unknown) =>
+  `"${String(value ?? '').replace(/"/g, '""')}"`;
 
 export default function StreamersPage() {
   const [streamerLists, setStreamerLists] = useState<StreamerList[]>([]);
@@ -237,6 +245,28 @@ export default function StreamersPage() {
     setMessage(`Deleted list "${selectedList.name}"`);
   };
 
+  const exportCsv = () => {
+    if (!selectedList || streamers.length === 0) return;
+    const headers = ['handle', 'active', 'display_name', 'twitch_user_id'];
+    const rows = streamers.map((streamer) => [
+      streamer.handle,
+      streamer.active ? 'true' : 'false',
+      streamer.display_name ?? streamer.handle,
+      streamer.twitch_user_id ?? '',
+    ]);
+    const csv = [
+      headers.map(escapeCsvValue).join(','),
+      ...rows.map((row) => row.map(escapeCsvValue).join(',')),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sanitizeFilenamePart(selectedList.name || 'streamers')}-streamers.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const selectedList = streamerLists.find((list) => list.id === selectedListId);
   const activeList = streamerLists.find((list) => list.is_active);
 
@@ -290,6 +320,13 @@ export default function StreamersPage() {
           disabled={!selectedListId || streamerLists.length <= 1}
         >
           Delete List
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={exportCsv}
+          disabled={!selectedListId || streamers.length === 0}
+        >
+          Export CSV
         </button>
         {activeList && (
           <span className="text-sm text-green-400 self-center">

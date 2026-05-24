@@ -82,6 +82,7 @@ export default function ClipsPage() {
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [viewStyle, setViewStyle] = useState<'grouped' | 'flat'>('grouped');
 
   const loadLists = useCallback(async () => {
     const cached = window.sessionStorage.getItem(STREAMER_LISTS_CACHE_KEY);
@@ -240,8 +241,8 @@ export default function ClipsPage() {
           }
         }
       }
-      await loadFetchRuns(selectedListId);
       window.sessionStorage.removeItem(`${FETCH_RUNS_CACHE_PREFIX}${selectedListId}`);
+      await loadFetchRuns(selectedListId);
       if (newRunId) {
         setSelectedFetchRunId(newRunId);
       }
@@ -276,6 +277,12 @@ export default function ClipsPage() {
     typeof window === 'undefined' ? 'localhost' : window.location.hostname;
   const activeList = streamerLists.find((list) => list.is_active);
   const visibleFetchRuns = showAllHistory ? fetchRuns : fetchRuns.slice(0, 5);
+  const progressTotal = Number(progress?.totalStreamers ?? 0);
+  const progressProcessed = Math.min(Number(progress?.processed ?? 0), progressTotal);
+  const progressPercent = progressTotal > 0
+    ? Math.round((progressProcessed / progressTotal) * 100)
+    : 0;
+  const progressUnit = 'Streamers';
 
   const formatRunLabel = (run: FetchRun) => {
     const date = formatDateTime(run.created_at);
@@ -288,9 +295,10 @@ export default function ClipsPage() {
     const res = await fetch(`/api/fetch-runs/${selectedFetchRunId}`, {
       method: 'DELETE',
     });
-    if (!res.ok || !selectedListId) return;
+    if (!res.ok) return;
     setSelectedFetchRunDetails(null);
     window.sessionStorage.removeItem(`${FETCH_RUN_DETAILS_CACHE_PREFIX}${selectedFetchRunId}`);
+    if (!selectedListId) return;
     window.sessionStorage.removeItem(`${FETCH_RUNS_CACHE_PREFIX}${selectedListId}`);
     await loadFetchRuns(selectedListId);
   };
@@ -312,6 +320,103 @@ export default function ClipsPage() {
       return next;
     });
   };
+
+  const handleExportSelected = async () => {
+    const text = selectedClips.map((clip) => clip.url).join('\n');
+    const selectedRun = fetchRuns.find((run) => run.id === selectedFetchRunId);
+    const categoryName = category === 'all' ? 'All' : category;
+    const exportDate = selectedRun
+      ? formatFilenameDate(selectedRun.created_at)
+      : formatFilenameDate(new Date().toISOString());
+    const exportFilename = `twitch-clip-links - ${sanitizeFilenamePart(categoryName)} - ${exportDate}.txt`;
+    await fetch('/api/clip-lists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: `Clip list ${new Date().toLocaleString()}`,
+        linksText: text,
+        clipCount: selectedClips.length,
+      }),
+    });
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = exportFilename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const renderClipCard = (clip: Clip, showStreamerBadge = false) => (
+    <article
+      key={clip.id}
+      className={`card relative flex flex-col p-2.5 cursor-pointer transition-colors ${
+        selectedIds.has(clip.id)
+          ? 'border-yellow-400 bg-yellow-950/30 ring-2 ring-yellow-400'
+          : 'border-slate-700 hover:border-slate-500'
+      }`}
+      onClick={() => toggleClipSelection(clip.id)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleClipSelection(clip.id);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selectedIds.has(clip.id)}
+    >
+      {selectedIds.has(clip.id) && (
+        <span className="absolute right-2 top-2 z-10 rounded bg-yellow-400 px-2 py-0.5 text-[11px] font-semibold text-black">
+          Selected
+        </span>
+      )}
+      {clip.thumbnail_url && (
+        <button
+          type="button"
+          className="mb-1.5 block w-full"
+          onClick={(event) => {
+            event.stopPropagation();
+            setPreviewId(clip.id);
+          }}
+          aria-label={`Preview ${clip.title}`}
+        >
+          <img
+            src={clip.thumbnail_url}
+            alt={clip.title}
+            className="w-full aspect-video object-cover rounded"
+          />
+        </button>
+      )}
+      <div className="mb-1.5 min-h-9">
+        <h3 className="font-medium text-xs leading-4 line-clamp-2">{clip.title}</h3>
+      </div>
+      <div className="flex flex-wrap gap-1 mb-2">
+        <span className="badge badge-active">{clip.game_name || 'Unknown'}</span>
+        {showStreamerBadge && (
+          <span className="badge badge-unreviewed">{clip.streamer_handle || clip.broadcaster_name}</span>
+        )}
+        <span className="badge badge-unreviewed">{clip.view_count.toLocaleString()} views</span>
+        <span className="badge badge-unreviewed">{clip.duration ? `${clip.duration}s` : '-'}</span>
+      </div>
+      <div className="text-[11px] text-slate-500 mb-2">
+        {formatDate(clip.created_at)}
+      </div>
+      <div className="mt-auto flex justify-end">
+        <a
+          href={clip.url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-7 w-7 items-center justify-center rounded bg-slate-700 text-sm text-slate-100 hover:bg-slate-600"
+          onClick={(event) => event.stopPropagation()}
+          aria-label={`Open ${clip.title} on Twitch`}
+          title="Open on Twitch"
+        >
+          &#8599;
+        </a>
+      </div>
+    </article>
+  );
 
   return (
     <div>
@@ -370,7 +475,14 @@ export default function ClipsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end mb-6">
+      <div id="fetch-controls" className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mb-6 scroll-mt-6">
+        <div>
+          <label className="label">View Style</label>
+          <select className="input" value={viewStyle} onChange={(e) => setViewStyle(e.target.value as 'grouped' | 'flat')}>
+            <option value="grouped">Grouped by Streamer</option>
+            <option value="flat">Flat Grid</option>
+          </select>
+        </div>
         <div>
           <label className="label">Fetch Range</label>
           <select className="input" value={fetchDays} onChange={(e) => setFetchDays(Number(e.target.value))}>
@@ -406,29 +518,7 @@ export default function ClipsPage() {
       <div className="flex flex-wrap gap-2 mb-6">
         <button onClick={() => setSelectedIds(new Set(clips.map((clip) => clip.id)))} className="btn btn-secondary">Select All</button>
         <button onClick={() => setSelectedIds(new Set())} className="btn btn-secondary">Clear All</button>
-        <button onClick={async () => {
-          const text = selectedClips.map((clip) => clip.url).join('\n');
-          const selectedRun = fetchRuns.find((run) => run.id === selectedFetchRunId);
-          const categoryName = category === 'all' ? 'All' : category;
-          const exportDate = selectedRun ? formatFilenameDate(selectedRun.created_at) : formatFilenameDate(new Date().toISOString());
-          const exportFilename = `twitch-clip-links - ${sanitizeFilenamePart(categoryName)} - ${exportDate}.txt`;
-          await fetch('/api/clip-lists', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: `Clip list ${new Date().toLocaleString()}`,
-              linksText: text,
-              clipCount: selectedClips.length,
-            }),
-          });
-          const blob = new Blob([text], { type: 'text/plain' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = exportFilename;
-          a.click();
-          URL.revokeObjectURL(url);
-        }} disabled={!selectedClips.length} className="btn btn-secondary">Export Selected Links</button>
+        <button onClick={handleExportSelected} disabled={!selectedClips.length} className="btn btn-secondary">Export Selected Links</button>
       </div>
 
       {loading && clips.length > 0 && (
@@ -437,9 +527,18 @@ export default function ClipsPage() {
         </div>
       )}
       {progress && (
-        <div className="card mb-4 text-sm flex flex-wrap gap-x-5 gap-y-2">
-          <span>Processed <strong>{progress.processed ?? 0}</strong> / {progress.totalStreamers}</span>
-          <span>Clips <strong>{progress.totalClipsFound ?? 0}</strong></span>
+        <div className="card mb-4 text-sm space-y-3">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <span>{progressUnit} <strong>{progressProcessed}</strong> / {progressTotal}</span>
+            <span>Progress <strong>{progressPercent}%</strong></span>
+            <span>Stored Clips <strong>{progress.totalClipsFound ?? 0}</strong></span>
+          </div>
+          <div className="h-2 overflow-hidden rounded bg-slate-800">
+            <div
+              className="h-full bg-yellow-400 transition-all"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
         </div>
       )}
       {fetchError && (
@@ -514,82 +613,38 @@ export default function ClipsPage() {
         <div className="py-8 text-slate-400">No fetch runs for this list yet. Fetch clips to create one.</div>
       ) : (
         <div className="space-y-8 mt-2 fade-in">
-          {grouped.map(([handle, entries]) => (
-            <section key={handle}>
-              <h2 className="text-base font-semibold mb-2">{handle}'s clips</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
-                {entries.map((clip) => (
-                  <article
-                    key={clip.id}
-                    className={`card relative flex flex-col p-2.5 cursor-pointer transition-colors ${
-                      selectedIds.has(clip.id)
-                        ? 'border-yellow-400 bg-yellow-950/30 ring-2 ring-yellow-400'
-                        : 'border-slate-700 hover:border-slate-500'
-                    }`}
-                    onClick={() => toggleClipSelection(clip.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        toggleClipSelection(clip.id);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={selectedIds.has(clip.id)}
-                  >
-                    {selectedIds.has(clip.id) && (
-                      <span className="absolute right-2 top-2 z-10 rounded bg-yellow-400 px-2 py-0.5 text-[11px] font-semibold text-black">
-                        Selected
-                      </span>
-                    )}
-                    {clip.thumbnail_url && (
-                      <button
-                        type="button"
-                        className="mb-1.5 block w-full"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setPreviewId(clip.id);
-                        }}
-                        aria-label={`Preview ${clip.title}`}
-                      >
-                        <img
-                          src={clip.thumbnail_url}
-                          alt={clip.title}
-                          className="w-full aspect-video object-cover rounded"
-                        />
-                      </button>
-                    )}
-                    <div className="mb-1.5 min-h-9">
-                      <h3 className="font-medium text-xs leading-4 line-clamp-2">{clip.title}</h3>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      <span className="badge badge-active">{clip.game_name || 'Unknown'}</span>
-                      <span className="badge badge-unreviewed">{clip.view_count.toLocaleString()} views</span>
-                      <span className="badge badge-unreviewed">{clip.duration ? `${clip.duration}s` : '-'}</span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 mb-2">
-                      {formatDate(clip.created_at)}
-                    </div>
-                    <div className="mt-auto flex justify-end">
-                      <a
-                        href={clip.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded bg-slate-700 text-sm text-slate-100 hover:bg-slate-600"
-                        onClick={(event) => event.stopPropagation()}
-                        aria-label={`Open ${clip.title} on Twitch`}
-                        title="Open on Twitch"
-                      >
-                        &#8599;
-                      </a>
-                    </div>
-                  </article>
-                ))}
+          {viewStyle === 'flat' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
+              {clips.map((clip) => renderClipCard(clip, true))}
+            </div>
+          ) : (
+            grouped.map(([handle, entries]) => (
+              <section key={handle}>
+                <h2 className="text-base font-semibold mb-2">{handle}'s clips</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
+                  {entries.map((clip) => renderClipCard(clip))}
+                </div>
+              </section>
+            ))
+          )}
               </div>
-            </section>
-          ))}
-        </div>
       )}
+
+      <div className="mt-8 flex flex-wrap justify-end gap-3">
+        <button
+          className="btn btn-secondary"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          Back to Top
+        </button>
+        <button
+          onClick={handleExportSelected}
+          disabled={!selectedClips.length}
+          className="btn btn-secondary"
+        >
+          Export Selected Links
+        </button>
+      </div>
     </div>
   );
 }

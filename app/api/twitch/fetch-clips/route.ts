@@ -17,6 +17,13 @@ type FetchClipsRequest = {
   listId?: number | string;
 };
 
+type ClipStreamer = {
+  id: number;
+  handle: string;
+  twitch_user_id: string | null;
+  display_name: string;
+};
+
 async function getSetting(key: string, fallback: string) {
   const setting = await prisma.appSetting.findUnique({ where: { key } });
   return setting?.value ?? process.env[key] ?? fallback;
@@ -24,22 +31,17 @@ async function getSetting(key: string, fallback: string) {
 
 async function insertClips(
   clips: NormalizedClip[],
-  streamer: {
-    id: number;
-    handle: string;
-    twitch_user_id: string | null;
-    display_name: string;
-  },
+  streamer: ClipStreamer,
   fetchRunId: number
 ) {
-  if (clips.length === 0) return;
-  await prisma.clip.createMany({
+  if (clips.length === 0) return 0;
+  const result = await prisma.clip.createMany({
     data: clips.map((clip) => ({
       id: `${clip.source}:${clip.externalId}:${fetchRunId}`,
       source: clip.source,
       external_id: clip.externalId,
       url: clip.url,
-      broadcaster_id: streamer.twitch_user_id ?? streamer.handle,
+      broadcaster_id: clip.broadcasterId ?? streamer.twitch_user_id ?? streamer.handle,
       broadcaster_name: clip.broadcasterName ?? streamer.display_name,
       title: clip.title ?? clip.url,
       streamer_handle: clip.streamerHandle,
@@ -53,7 +55,9 @@ async function insertClips(
       streamer_id: streamer.id,
       fetch_run_id: fetchRunId,
     })),
+    skipDuplicates: true,
   });
+  return result.count;
 }
 
 function createLimiter(concurrency: number) {
@@ -174,8 +178,8 @@ export async function POST(request: NextRequest) {
                         startedAt,
                         endedAt,
                       });
-                await dbWrite(() => insertClips(clips, streamer, fetchRun.id));
-                totalClipsFound += clips.length;
+                const inserted = await dbWrite(() => insertClips(clips, streamer, fetchRun.id));
+                totalClipsFound += inserted;
                 if (clips.length === 0) {
                   noClipHandles.push(streamer.handle);
                 }
