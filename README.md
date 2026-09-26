@@ -88,8 +88,6 @@ DIRECT_URL="postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postg
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-⚠️ **Keep `.env.local` secret!** Never commit it to version control.
-
 ### 3. Initialize Database
 
 ```bash
